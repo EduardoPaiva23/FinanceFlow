@@ -1,13 +1,32 @@
 import { useEffect, useState } from 'react'
+import type { Lancamento, TipoLancamento } from '../types'
 
 const hoje = () => new Date().toISOString().slice(0, 10)
 
-const estadoInicial = {
+interface FormState {
+  descricao: string
+  valor: string
+  tipo: TipoLancamento
+  categoria: string
+  data: string
+}
+
+const estadoInicial: FormState = {
   descricao: '',
   valor: '',
   tipo: 'receita',
   categoria: '',
   data: hoje(),
+}
+
+interface LancamentoFormProps {
+  categorias: string[]
+  carregando: boolean
+  erro: string | null
+  onAdicionar: (lancamento: Lancamento) => void
+  onEditar: (lancamento: Lancamento) => void
+  lancamentoEmEdicao: Lancamento | null
+  onCancelarEdicao: () => void
 }
 
 export default function LancamentoForm({
@@ -18,8 +37,8 @@ export default function LancamentoForm({
   onEditar,
   lancamentoEmEdicao,
   onCancelarEdicao,
-}) {
-  const [form, setForm] = useState(estadoInicial)
+}: LancamentoFormProps) {
+  const [form, setForm] = useState<FormState>(estadoInicial)
   const editando = Boolean(lancamentoEmEdicao)
 
   // Ao entrar em modo edição, carrega os dados do lançamento no formulário.
@@ -37,11 +56,11 @@ export default function LancamentoForm({
     }
   }, [lancamentoEmEdicao])
 
-  function atualizar(campo, valor) {
+  function atualizar<K extends keyof FormState>(campo: K, valor: FormState[K]) {
     setForm((atual) => ({ ...atual, [campo]: valor }))
   }
 
-  function handleSubmit(e) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
     const valorNumerico = Number(form.valor)
@@ -57,7 +76,7 @@ export default function LancamentoForm({
       data: form.data,
     }
 
-    if (editando) {
+    if (lancamentoEmEdicao) {
       onEditar({ ...lancamentoEmEdicao, ...dados })
     } else {
       onAdicionar({ id: crypto.randomUUID(), ...dados })
@@ -132,7 +151,7 @@ export default function LancamentoForm({
             id="tipo"
             className={input}
             value={form.tipo}
-            onChange={(e) => atualizar('tipo', e.target.value)}
+            onChange={(e) => atualizar('tipo', e.target.value as TipoLancamento)}
           >
             <option value="receita">Receita</option>
             <option value="despesa">Despesa</option>

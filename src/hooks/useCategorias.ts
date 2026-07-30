@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react'
 import { buscarCategorias } from '../api/categorias'
 
-/**
- * Hook que consome a API fake de categorias.
- * @returns {{ categorias: string[], carregando: boolean, erro: string|null }}
- */
-export function useCategorias() {
-  const [categorias, setCategorias] = useState([])
+interface UseCategoriasResult {
+  categorias: string[]
+  carregando: boolean
+  erro: string | null
+}
+
+/** Hook que consome a API fake de categorias. */
+export function useCategorias(): UseCategoriasResult {
+  const [categorias, setCategorias] = useState<string[]>([])
   const [carregando, setCarregando] = useState(true)
-  const [erro, setErro] = useState(null)
+  const [erro, setErro] = useState<string | null>(null)
 
   useEffect(() => {
     let ativo = true
@@ -20,7 +23,7 @@ export function useCategorias() {
         const dados = await buscarCategorias()
         if (ativo) setCategorias(dados)
       } catch (e) {
-        if (ativo) setErro(e.message)
+        if (ativo) setErro(e instanceof Error ? e.message : String(e))
       } finally {
         if (ativo) setCarregando(false)
       }
