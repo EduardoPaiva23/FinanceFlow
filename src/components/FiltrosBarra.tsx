@@ -1,3 +1,17 @@
+import type { TipoLancamento } from '../types'
+
+type FiltroTipo = 'todos' | TipoLancamento
+type Ordem = 'asc' | 'desc'
+
+interface FiltrosBarraProps {
+  busca: string
+  onBuscaChange: (busca: string) => void
+  filtroTipo: FiltroTipo
+  onFiltroTipoChange: (tipo: FiltroTipo) => void
+  ordem: Ordem
+  onToggleOrdem: () => void
+}
+
 export default function FiltrosBarra({
   busca,
   onBuscaChange,
@@ -5,8 +19,8 @@ export default function FiltrosBarra({
   onFiltroTipoChange,
   ordem,
   onToggleOrdem,
-}) {
-  const tipos = [
+}: FiltrosBarraProps) {
+  const tipos: { valor: FiltroTipo; rotulo: string }[] = [
     { valor: 'todos', rotulo: 'Todos' },
     { valor: 'receita', rotulo: 'Receitas' },
     { valor: 'despesa', rotulo: 'Despesas' },

@@ -1,7 +1,20 @@
 import { useState } from 'react'
 import { formatarMoeda, formatarData } from '../utils/financas'
+import type { Lancamento } from '../types'
 
-export default function LancamentoItem({ lancamento, onEditar, onExcluir, emEdicao }) {
+interface LancamentoItemProps {
+  lancamento: Lancamento
+  onEditar: (lancamento: Lancamento) => void
+  onExcluir: (id: string) => void
+  emEdicao: boolean
+}
+
+export default function LancamentoItem({
+  lancamento,
+  onEditar,
+  onExcluir,
+  emEdicao,
+}: LancamentoItemProps) {
   const receita = lancamento.tipo === 'receita'
   const [confirmando, setConfirmando] = useState(false)
 

@@ -1,7 +1,7 @@
 // API fake: busca a lista de categorias de um JSON servido estaticamente.
 // Demonstra fetch + async/await + tratamento de erro.
 
-export async function buscarCategorias() {
+export async function buscarCategorias(): Promise<string[]> {
   // Pequeno atraso artificial para simular uma requisição de rede real
   // e permitir observar o estado de carregamento na interface.
   await new Promise((resolve) => setTimeout(resolve, 600))

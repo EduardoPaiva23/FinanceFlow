@@ -1,11 +1,19 @@
 import LancamentoItem from './LancamentoItem'
+import type { Lancamento } from '../types'
+
+interface LancamentosListProps {
+  lancamentos: Lancamento[]
+  onEditar: (lancamento: Lancamento) => void
+  onExcluir: (id: string) => void
+  idEmEdicao: string | null
+}
 
 export default function LancamentosList({
   lancamentos,
   onEditar,
   onExcluir,
   idEmEdicao,
-}) {
+}: LancamentosListProps) {
   if (lancamentos.length === 0) {
     return (
       <div className="rounded-2xl bg-white p-10 text-center text-slate-400 shadow-sm ring-1 ring-slate-200">
