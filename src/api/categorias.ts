@@ -1,16 +1,24 @@
-// API fake: busca a lista de categorias de um JSON servido estaticamente.
-// Demonstra fetch + async/await + tratamento de erro.
+import { apiFetch } from './client'
+import type { Categoria } from '../types'
 
-export async function buscarCategorias(): Promise<string[]> {
-  // Pequeno atraso artificial para simular uma requisição de rede real
-  // e permitir observar o estado de carregamento na interface.
-  await new Promise((resolve) => setTimeout(resolve, 600))
+export async function buscarCategorias(): Promise<Categoria[]> {
+  return apiFetch<Categoria[]>('/categorias')
+}
 
-  const resposta = await fetch('/categorias.json')
+export async function criarCategoria(nome: string): Promise<Categoria> {
+  return apiFetch<Categoria>('/categorias', {
+    method: 'POST',
+    body: JSON.stringify({ nome }),
+  })
+}
 
-  if (!resposta.ok) {
-    throw new Error(`Falha ao buscar categorias (HTTP ${resposta.status})`)
-  }
+export async function atualizarCategoria(id: string, nome: string): Promise<Categoria> {
+  return apiFetch<Categoria>(`/categorias/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ nome }),
+  })
+}
 
-  return resposta.json()
+export async function excluirCategoria(id: string): Promise<void> {
+  return apiFetch<void>(`/categorias/${id}`, { method: 'DELETE' })
 }

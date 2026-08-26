@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Lancamento, TipoLancamento } from '../types'
+import type { Categoria, Lancamento, LancamentoInput, TipoLancamento } from '../types'
 
 const hoje = () => new Date().toISOString().slice(0, 10)
 
@@ -7,7 +7,7 @@ interface FormState {
   descricao: string
   valor: string
   tipo: TipoLancamento
-  categoria: string
+  categoriaId: string
   data: string
 }
 
@@ -15,16 +15,16 @@ const estadoInicial: FormState = {
   descricao: '',
   valor: '',
   tipo: 'receita',
-  categoria: '',
+  categoriaId: '',
   data: hoje(),
 }
 
 interface LancamentoFormProps {
-  categorias: string[]
+  categorias: Categoria[]
   carregando: boolean
   erro: string | null
-  onAdicionar: (lancamento: Lancamento) => void
-  onEditar: (lancamento: Lancamento) => void
+  onAdicionar: (lancamento: LancamentoInput) => void
+  onEditar: (id: string, lancamento: LancamentoInput) => void
   lancamentoEmEdicao: Lancamento | null
   onCancelarEdicao: () => void
 }
@@ -39,6 +39,7 @@ export default function LancamentoForm({
   onCancelarEdicao,
 }: LancamentoFormProps) {
   const [form, setForm] = useState<FormState>(estadoInicial)
+  const [erroValidacao, setErroValidacao] = useState<string | null>(null)
   const editando = Boolean(lancamentoEmEdicao)
 
   // Ao entrar em modo edição, carrega os dados do lançamento no formulário.
@@ -48,12 +49,13 @@ export default function LancamentoForm({
         descricao: lancamentoEmEdicao.descricao,
         valor: String(lancamentoEmEdicao.valor),
         tipo: lancamentoEmEdicao.tipo,
-        categoria: lancamentoEmEdicao.categoria,
+        categoriaId: lancamentoEmEdicao.categoriaId,
         data: lancamentoEmEdicao.data,
       })
     } else {
       setForm({ ...estadoInicial, data: hoje() })
     }
+    setErroValidacao(null)
   }, [lancamentoEmEdicao])
 
   function atualizar<K extends keyof FormState>(campo: K, valor: FormState[K]) {
@@ -65,21 +67,27 @@ export default function LancamentoForm({
 
     const valorNumerico = Number(form.valor)
     if (!form.descricao.trim() || !valorNumerico || valorNumerico <= 0) {
+      setErroValidacao('Preencha a descrição e um valor válido.')
       return
     }
+    if (!form.categoriaId) {
+      setErroValidacao('Selecione uma categoria.')
+      return
+    }
+    setErroValidacao(null)
 
-    const dados = {
+    const dados: LancamentoInput = {
       descricao: form.descricao.trim(),
       valor: valorNumerico,
       tipo: form.tipo,
-      categoria: form.categoria || 'Outros',
+      categoriaId: form.categoriaId,
       data: form.data,
     }
 
     if (lancamentoEmEdicao) {
-      onEditar({ ...lancamentoEmEdicao, ...dados })
+      onEditar(lancamentoEmEdicao.id, dados)
     } else {
-      onAdicionar({ id: crypto.randomUUID(), ...dados })
+      onAdicionar(dados)
       setForm({ ...estadoInicial, data: hoje() })
     }
   }
@@ -89,12 +97,7 @@ export default function LancamentoForm({
     'w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className={`rounded-2xl bg-white p-6 shadow-sm ring-1 ${
-        editando ? 'ring-2 ring-emerald-400' : 'ring-slate-200'
-      }`}
-    >
+    <form onSubmit={handleSubmit}>
       <h2 className="mb-4 text-lg font-semibold text-slate-800">
         {editando ? 'Editar lançamento' : 'Novo lançamento'}
       </h2>
@@ -165,16 +168,16 @@ export default function LancamentoForm({
           <select
             id="categoria"
             className={input}
-            value={form.categoria}
-            onChange={(e) => atualizar('categoria', e.target.value)}
+            value={form.categoriaId}
+            onChange={(e) => atualizar('categoriaId', e.target.value)}
             disabled={carregando || !!erro}
           >
             <option value="">
               {carregando ? 'Carregando categorias...' : 'Selecione...'}
             </option>
             {categorias.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
+              <option key={cat.id} value={cat.id}>
+                {cat.nome}
               </option>
             ))}
           </select>
@@ -186,6 +189,8 @@ export default function LancamentoForm({
         </div>
       </div>
 
+      {erroValidacao && <p className="mt-3 text-sm text-red-600">{erroValidacao}</p>}
+
       <div className="mt-5 flex gap-3">
         <button
           type="submit"
@@ -193,15 +198,13 @@ export default function LancamentoForm({
         >
           {editando ? 'Salvar alterações' : 'Adicionar lançamento'}
         </button>
-        {editando && (
-          <button
-            type="button"
-            onClick={onCancelarEdicao}
-            className="rounded-lg border border-slate-300 px-4 py-2.5 font-semibold text-slate-600 transition hover:bg-slate-50"
-          >
-            Cancelar
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={onCancelarEdicao}
+          className="rounded-lg border border-slate-300 px-4 py-2.5 font-semibold text-slate-600 transition hover:bg-slate-50"
+        >
+          Cancelar
+        </button>
       </div>
     </form>
   )

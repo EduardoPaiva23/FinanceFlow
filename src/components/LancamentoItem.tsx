@@ -27,7 +27,7 @@ export default function LancamentoItem({
       <div className="min-w-0">
         <p className="truncate font-medium text-slate-800">{lancamento.descricao}</p>
         <p className="text-xs text-slate-500">
-          {formatarData(lancamento.data)} · {lancamento.categoria}
+          {formatarData(lancamento.data)} · {lancamento.categoria.nome}
         </p>
       </div>
 
