@@ -1,6 +1,6 @@
-// Utilitários de cálculo e formatação financeira.
-
-import type { CategoriaTotal, Lancamento, ResumoMes } from '../types'
+// Utilitários de formatação financeira.
+// Cálculos de resumo/agrupamento por categoria e filtro por mês agora são
+// feitos pelo backend (ver server/src/services/lancamentos.service.ts).
 
 const NOMES_MESES = [
   'Janeiro',
@@ -16,15 +16,6 @@ const NOMES_MESES = [
   'Novembro',
   'Dezembro',
 ]
-
-/** Calcula o saldo total dos lançamentos. Receitas somam, despesas subtraem. */
-export function calcularSaldo(lancamentos: Lancamento[]): number {
-  return lancamentos.reduce((saldo, lancamento) => {
-    return lancamento.tipo === 'receita'
-      ? saldo + lancamento.valor
-      : saldo - lancamento.valor
-  }, 0)
-}
 
 /** Formata um número como moeda brasileira (BRL). */
 export function formatarMoeda(valor: number): string {
@@ -43,36 +34,6 @@ export function formatarData(data: string): string {
 /** Retorna o mês de referência ('YYYY-MM') do dia de hoje. */
 export function mesAtual(): string {
   return new Date().toISOString().slice(0, 7)
-}
-
-/** Filtra os lançamentos cuja data pertence ao mês de referência 'YYYY-MM'. */
-export function filtrarPorMes(lancamentos: Lancamento[], mesRef: string): Lancamento[] {
-  return lancamentos.filter((lancamento) => lancamento.data.slice(0, 7) === mesRef)
-}
-
-/** Soma receitas e despesas de um conjunto de lançamentos (já filtrado por mês) e deriva o saldo do período. */
-export function calcularResumoMes(lancamentosDoMes: Lancamento[]): ResumoMes {
-  const receitas = lancamentosDoMes
-    .filter((l) => l.tipo === 'receita')
-    .reduce((total, l) => total + l.valor, 0)
-
-  const despesas = lancamentosDoMes
-    .filter((l) => l.tipo === 'despesa')
-    .reduce((total, l) => total + l.valor, 0)
-
-  return { receitas, despesas, saldo: receitas - despesas }
-}
-
-/** Agrupa as despesas de um conjunto de lançamentos por categoria, somando os valores. */
-export function agruparDespesasPorCategoria(lancamentosDoMes: Lancamento[]): CategoriaTotal[] {
-  const totais = new Map<string, number>()
-
-  for (const lancamento of lancamentosDoMes) {
-    if (lancamento.tipo !== 'despesa') continue
-    totais.set(lancamento.categoria, (totais.get(lancamento.categoria) ?? 0) + lancamento.valor)
-  }
-
-  return Array.from(totais, ([categoria, total]) => ({ categoria, total }))
 }
 
 /** Formata um mês de referência 'YYYY-MM' como "Julho de 2026". */

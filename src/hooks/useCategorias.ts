@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react'
 import { buscarCategorias } from '../api/categorias'
+import type { Categoria } from '../types'
 
 interface UseCategoriasResult {
-  categorias: string[]
+  categorias: Categoria[]
   carregando: boolean
   erro: string | null
 }
 
-/** Hook que consome a API fake de categorias. */
+/** Hook que consome a API de categorias. */
 export function useCategorias(): UseCategoriasResult {
-  const [categorias, setCategorias] = useState<string[]>([])
+  const [categorias, setCategorias] = useState<Categoria[]>([])
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
 
