@@ -1,6 +1,9 @@
 import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useAuth } from '../context/AuthContext'
 import { ApiError } from '../api/client'
+import { loginSchema, type LoginFormValues } from '../schemas/auth.schema'
 
 interface LoginProps {
   onIrParaRegistrar: () => void
@@ -8,32 +11,35 @@ interface LoginProps {
 
 export default function Login({ onIrParaRegistrar }: LoginProps) {
   const { login } = useAuth()
-  const [email, setEmail] = useState('')
-  const [senha, setSenha] = useState('')
-  const [erro, setErro] = useState<string | null>(null)
-  const [enviando, setEnviando] = useState(false)
+  const [erroApi, setErroApi] = useState<string | null>(null)
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: '', senha: '' },
+  })
 
   const label = 'block text-sm font-medium text-slate-600 mb-1'
   const input =
     'w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setErro(null)
-    setEnviando(true)
+  const aoSubmeter = handleSubmit(async (dados) => {
+    setErroApi(null)
     try {
-      await login(email, senha)
+      await login(dados.email, dados.senha)
     } catch (e) {
-      setErro(e instanceof ApiError ? e.message : 'Não foi possível entrar.')
-    } finally {
-      setEnviando(false)
+      setErroApi(e instanceof ApiError ? e.message : 'Não foi possível entrar.')
     }
-  }
+  })
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
       <form
-        onSubmit={handleSubmit}
+        onSubmit={aoSubmeter}
+        noValidate
         className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200"
       >
         <h1 className="mb-1 text-2xl font-bold tracking-tight text-slate-800">💸 FinanceFlow</h1>
@@ -49,10 +55,9 @@ export default function Login({ onIrParaRegistrar }: LoginProps) {
               type="email"
               autoComplete="email"
               className={input}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
+              {...register('email')}
             />
+            {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>}
           </div>
 
           <div>
@@ -64,25 +69,24 @@ export default function Login({ onIrParaRegistrar }: LoginProps) {
               type="password"
               autoComplete="current-password"
               className={input}
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-              required
+              {...register('senha')}
             />
+            {errors.senha && <p className="mt-1 text-xs text-red-600">{errors.senha.message}</p>}
           </div>
         </div>
 
-        {erro && (
+        {erroApi && (
           <p className="mt-3 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600 ring-1 ring-red-200">
-            {erro}
+            {erroApi}
           </p>
         )}
 
         <button
           type="submit"
-          disabled={enviando}
+          disabled={isSubmitting}
           className="mt-5 w-full rounded-lg bg-emerald-600 px-4 py-2.5 font-semibold text-white transition hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-500/40 disabled:opacity-60"
         >
-          {enviando ? 'Entrando...' : 'Entrar'}
+          {isSubmitting ? 'Entrando...' : 'Entrar'}
         </button>
 
         <p className="mt-4 text-center text-sm text-slate-500">
