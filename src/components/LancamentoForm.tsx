@@ -1,22 +1,26 @@
-import { useEffect, useState } from 'react'
-import type { Categoria, Lancamento, LancamentoInput, TipoLancamento } from '../types'
+import { useEffect } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import type { Categoria, Lancamento, LancamentoInput } from '../types'
+import {
+  lancamentoSchema,
+  type LancamentoFormValues,
+  type LancamentoResolver,
+} from '../schemas/lancamento.schema'
 
 const hoje = () => new Date().toISOString().slice(0, 10)
 
-interface FormState {
-  descricao: string
-  valor: string
-  tipo: TipoLancamento
-  categoriaId: string
-  data: string
-}
-
-const estadoInicial: FormState = {
-  descricao: '',
-  valor: '',
-  tipo: 'receita',
-  categoriaId: '',
-  data: hoje(),
+function valoresIniciais(lancamento: Lancamento | null): LancamentoFormValues {
+  if (lancamento) {
+    return {
+      descricao: lancamento.descricao,
+      valor: lancamento.valor,
+      tipo: lancamento.tipo,
+      categoriaId: lancamento.categoriaId,
+      data: lancamento.data,
+    }
+  }
+  return { descricao: '', valor: '', tipo: 'receita', categoriaId: '', data: hoje() }
 }
 
 interface LancamentoFormProps {
@@ -38,66 +42,41 @@ export default function LancamentoForm({
   lancamentoEmEdicao,
   onCancelarEdicao,
 }: LancamentoFormProps) {
-  const [form, setForm] = useState<FormState>(estadoInicial)
-  const [erroValidacao, setErroValidacao] = useState<string | null>(null)
   const editando = Boolean(lancamentoEmEdicao)
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<LancamentoFormValues>({
+    resolver: zodResolver(lancamentoSchema) as LancamentoResolver,
+    defaultValues: valoresIniciais(lancamentoEmEdicao),
+  })
 
   // Ao entrar em modo edição, carrega os dados do lançamento no formulário.
   useEffect(() => {
-    if (lancamentoEmEdicao) {
-      setForm({
-        descricao: lancamentoEmEdicao.descricao,
-        valor: String(lancamentoEmEdicao.valor),
-        tipo: lancamentoEmEdicao.tipo,
-        categoriaId: lancamentoEmEdicao.categoriaId,
-        data: lancamentoEmEdicao.data,
-      })
-    } else {
-      setForm({ ...estadoInicial, data: hoje() })
-    }
-    setErroValidacao(null)
-  }, [lancamentoEmEdicao])
+    reset(valoresIniciais(lancamentoEmEdicao))
+  }, [lancamentoEmEdicao, reset])
 
-  function atualizar<K extends keyof FormState>(campo: K, valor: FormState[K]) {
-    setForm((atual) => ({ ...atual, [campo]: valor }))
-  }
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-
-    const valorNumerico = Number(form.valor)
-    if (!form.descricao.trim() || !valorNumerico || valorNumerico <= 0) {
-      setErroValidacao('Preencha a descrição e um valor válido.')
-      return
-    }
-    if (!form.categoriaId) {
-      setErroValidacao('Selecione uma categoria.')
-      return
-    }
-    setErroValidacao(null)
-
-    const dados: LancamentoInput = {
-      descricao: form.descricao.trim(),
-      valor: valorNumerico,
-      tipo: form.tipo,
-      categoriaId: form.categoriaId,
-      data: form.data,
-    }
+  const aoSubmeter = handleSubmit((dados) => {
+    const payload: LancamentoInput = dados as LancamentoInput
 
     if (lancamentoEmEdicao) {
-      onEditar(lancamentoEmEdicao.id, dados)
+      onEditar(lancamentoEmEdicao.id, payload)
     } else {
-      onAdicionar(dados)
-      setForm({ ...estadoInicial, data: hoje() })
+      onAdicionar(payload)
+      reset(valoresIniciais(null))
     }
-  }
+  })
 
   const label = 'block text-sm font-medium text-slate-600 mb-1'
   const input =
     'w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-800 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+  const erroCampo = 'mt-1 text-xs text-red-600'
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={aoSubmeter} noValidate>
       <h2 className="mb-4 text-lg font-semibold text-slate-800">
         {editando ? 'Editar lançamento' : 'Novo lançamento'}
       </h2>
@@ -112,9 +91,9 @@ export default function LancamentoForm({
             type="text"
             className={input}
             placeholder="Ex.: Salário, Mercado, Aluguel..."
-            value={form.descricao}
-            onChange={(e) => atualizar('descricao', e.target.value)}
+            {...register('descricao')}
           />
+          {errors.descricao && <p className={erroCampo}>{errors.descricao.message}</p>}
         </div>
 
         <div>
@@ -128,37 +107,28 @@ export default function LancamentoForm({
             step="0.01"
             className={input}
             placeholder="0,00"
-            value={form.valor}
-            onChange={(e) => atualizar('valor', e.target.value)}
+            {...register('valor', { valueAsNumber: true })}
           />
+          {errors.valor && <p className={erroCampo}>{errors.valor.message}</p>}
         </div>
 
         <div>
           <label className={label} htmlFor="data">
             Data
           </label>
-          <input
-            id="data"
-            type="date"
-            className={input}
-            value={form.data}
-            onChange={(e) => atualizar('data', e.target.value)}
-          />
+          <input id="data" type="date" className={input} {...register('data')} />
+          {errors.data && <p className={erroCampo}>{errors.data.message}</p>}
         </div>
 
         <div>
           <label className={label} htmlFor="tipo">
             Tipo
           </label>
-          <select
-            id="tipo"
-            className={input}
-            value={form.tipo}
-            onChange={(e) => atualizar('tipo', e.target.value as TipoLancamento)}
-          >
+          <select id="tipo" className={input} {...register('tipo')}>
             <option value="receita">Receita</option>
             <option value="despesa">Despesa</option>
           </select>
+          {errors.tipo && <p className={erroCampo}>{errors.tipo.message}</p>}
         </div>
 
         <div>
@@ -168,9 +138,8 @@ export default function LancamentoForm({
           <select
             id="categoria"
             className={input}
-            value={form.categoriaId}
-            onChange={(e) => atualizar('categoriaId', e.target.value)}
             disabled={carregando || !!erro}
+            {...register('categoriaId')}
           >
             <option value="">
               {carregando ? 'Carregando categorias...' : 'Selecione...'}
@@ -181,15 +150,10 @@ export default function LancamentoForm({
               </option>
             ))}
           </select>
-          {erro && (
-            <p className="mt-1 text-xs text-red-600">
-              Não foi possível carregar as categorias.
-            </p>
-          )}
+          {erro && <p className={erroCampo}>Não foi possível carregar as categorias.</p>}
+          {errors.categoriaId && <p className={erroCampo}>{errors.categoriaId.message}</p>}
         </div>
       </div>
-
-      {erroValidacao && <p className="mt-3 text-sm text-red-600">{erroValidacao}</p>}
 
       <div className="mt-5 flex gap-3">
         <button
