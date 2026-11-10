@@ -6,9 +6,11 @@ interface ModalProps {
   aberto: boolean
   onFechar: () => void
   children: ReactNode
+  /** Modal mais largo, para conteúdo em lista/tabela. */
+  largo?: boolean
 }
 
-export default function Modal({ aberto, onFechar, children }: ModalProps) {
+export default function Modal({ aberto, onFechar, children, largo = false }: ModalProps) {
   useEffect(() => {
     if (!aberto) return
 
@@ -34,7 +36,7 @@ export default function Modal({ aberto, onFechar, children }: ModalProps) {
       onClick={onFechar}
     >
       <div
-        className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-lg ring-1 ring-slate-200"
+        className={`w-full ${largo ? 'max-w-4xl' : 'max-w-lg'} rounded-2xl bg-white p-6 shadow-lg ring-1 ring-slate-200`}
         onClick={(e) => e.stopPropagation()}
       >
         {children}

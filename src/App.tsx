@@ -7,8 +7,11 @@ import SeletorMes from './components/SeletorMes'
 import GraficoDespesasPorCategoria from './components/GraficoDespesasPorCategoria'
 import DetalhesMes from './components/DetalhesMes'
 import Modal from './components/Modal'
+import ImportarFaturaModal from './components/ImportarFaturaModal'
+import { ApiError } from './api/client'
 import {
   criarLancamento as criarLancamentoApi,
+  criarLancamentoParcelado as criarLancamentoParceladoApi,
   atualizarLancamento as atualizarLancamentoApi,
   excluirLancamento as excluirLancamentoApi,
 } from './api/lancamentos'
@@ -18,7 +21,13 @@ import { useLancamentos } from './hooks/useLancamentos'
 import { useResumoMes } from './hooks/useResumoMes'
 import { usePorCategoriaTotais } from './hooks/usePorCategoriaTotais'
 import { deslocarMes, mesAtual } from './utils/financas'
-import type { Lancamento, LancamentoInput, TipoLancamento } from './types'
+import type {
+  EscopoParcelas,
+  Lancamento,
+  LancamentoInput,
+  LancamentoParceladoInput,
+  TipoLancamento,
+} from './types'
 
 export default function App() {
   const { usuario, logout } = useAuth()
@@ -29,6 +38,10 @@ export default function App() {
   const [emEdicao, setEmEdicao] = useState<Lancamento | null>(null)
   const [modalAberto, setModalAberto] = useState(false)
   const [erroAcao, setErroAcao] = useState<string | null>(null)
+  const [aviso, setAviso] = useState<string | null>(null)
+  const [importacaoAberta, setImportacaoAberta] = useState(false)
+  // Parcelamento que o backend apontou como parecido com um já existente, aguardando confirmação.
+  const [parceladoPendente, setParceladoPendente] = useState<LancamentoParceladoInput | null>(null)
 
   // Incrementado após qualquer criação/edição/exclusão bem-sucedida, para
   // forçar o refetch coordenado de lançamentos, resumo e totais por categoria.
@@ -59,17 +72,28 @@ export default function App() {
 
   function abrirModalNovo() {
     setEmEdicao(null)
+    setParceladoPendente(null)
+    setAviso(null)
     setModalAberto(true)
   }
 
   function abrirModalEdicao(lancamento: Lancamento) {
     setEmEdicao(lancamento)
+    setParceladoPendente(null)
+    setAviso(null)
     setModalAberto(true)
   }
 
   function fecharModal() {
     setModalAberto(false)
     setEmEdicao(null)
+    setParceladoPendente(null)
+  }
+
+  function fecharImportacao(alterou: boolean) {
+    setImportacaoAberta(false)
+    // Atualiza lista, resumo e gráfico com o que foi importado.
+    if (alterou) setVersao((v) => v + 1)
   }
 
   async function adicionarLancamento(dados: LancamentoInput) {
@@ -83,10 +107,28 @@ export default function App() {
     }
   }
 
-  async function editarLancamento(id: string, dados: LancamentoInput) {
+  async function adicionarParcelado(dados: LancamentoParceladoInput) {
     try {
       setErroAcao(null)
-      await atualizarLancamentoApi(id, dados)
+      setParceladoPendente(null)
+      const criados = await criarLancamentoParceladoApi(dados)
+      setVersao((v) => v + 1)
+      setModalAberto(false)
+      setAviso(`${criados.length} parcelas criadas.`)
+    } catch (e) {
+      // Parcelamento parecido já existe: o usuário decide se cria mesmo assim.
+      if (e instanceof ApiError && e.codigo === 'PARCELAMENTO_PARECIDO') {
+        setParceladoPendente(dados)
+        return
+      }
+      setErroAcao(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  async function editarLancamento(id: string, dados: LancamentoInput, escopo: EscopoParcelas) {
+    try {
+      setErroAcao(null)
+      await atualizarLancamentoApi(id, dados, escopo)
       setEmEdicao(null)
       setVersao((v) => v + 1)
       setModalAberto(false)
@@ -95,10 +137,10 @@ export default function App() {
     }
   }
 
-  async function excluirLancamento(id: string) {
+  async function excluirLancamento(id: string, escopo: EscopoParcelas) {
     try {
       setErroAcao(null)
-      await excluirLancamentoApi(id)
+      await excluirLancamentoApi(id, escopo)
       setEmEdicao((atual) => (atual?.id === id ? null : atual))
       setVersao((v) => v + 1)
     } catch (e) {
@@ -139,14 +181,32 @@ export default function App() {
               onMesAnterior={() => setMesSelecionado((m) => deslocarMes(m, -1))}
               onProximoMes={() => setMesSelecionado((m) => deslocarMes(m, 1))}
             />
-            <button
-              type="button"
-              onClick={abrirModalNovo}
-              className="rounded-lg bg-emerald-600 px-4 py-2.5 font-semibold text-white transition hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-500/40"
-            >
-              + Novo lançamento
-            </button>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setAviso(null)
+                  setImportacaoAberta(true)
+                }}
+                className="rounded-lg border border-emerald-600 px-4 py-2.5 font-semibold text-emerald-700 transition hover:bg-emerald-50 focus:ring-2 focus:ring-emerald-500/40"
+              >
+                Importar via arquivo
+              </button>
+              <button
+                type="button"
+                onClick={abrirModalNovo}
+                className="rounded-lg bg-emerald-600 px-4 py-2.5 font-semibold text-white transition hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-500/40"
+              >
+                + Novo lançamento
+              </button>
+            </div>
           </div>
+
+          {aviso && (
+            <p className="rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-700 ring-1 ring-emerald-200" role="status">
+              {aviso}
+            </p>
+          )}
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <CardEstatistica
@@ -202,16 +262,42 @@ export default function App() {
           carregando={carregandoCategorias}
           erro={erroCategorias}
           onAdicionar={adicionarLancamento}
+          onAdicionarParcelado={adicionarParcelado}
           onEditar={editarLancamento}
           lancamentoEmEdicao={emEdicao}
           onCancelarEdicao={fecharModal}
         />
+        {modalAberto && parceladoPendente && (
+          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg bg-amber-50 px-4 py-2 text-sm text-amber-800 ring-1 ring-amber-200" role="alert">
+            <span>Já existe um parcelamento parecido. Criar mesmo assim?</span>
+            <button
+              type="button"
+              className="rounded-md bg-amber-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-amber-700"
+              onClick={() => void adicionarParcelado({ ...parceladoPendente, confirmarDuplicado: true })}
+            >
+              Criar mesmo assim
+            </button>
+            <button
+              type="button"
+              className="rounded-md border border-amber-300 px-3 py-1 text-xs font-semibold text-amber-800 transition hover:bg-amber-100"
+              onClick={() => setParceladoPendente(null)}
+            >
+              Cancelar
+            </button>
+          </div>
+        )}
         {modalAberto && erroAcao && (
           <p className="mt-3 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600 ring-1 ring-red-200">
             {erroAcao}
           </p>
         )}
       </Modal>
+
+      <ImportarFaturaModal
+        aberto={importacaoAberta}
+        categorias={categorias}
+        onFechar={fecharImportacao}
+      />
     </div>
   )
 }

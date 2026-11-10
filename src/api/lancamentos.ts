@@ -1,5 +1,13 @@
 import { apiFetch } from './client'
-import type { CategoriaTotal, Lancamento, LancamentoInput, ResumoMes, TipoLancamento } from '../types'
+import type {
+  CategoriaTotal,
+  EscopoParcelas,
+  Lancamento,
+  LancamentoInput,
+  LancamentoParceladoInput,
+  ResumoMes,
+  TipoLancamento,
+} from '../types'
 
 interface ListarLancamentosParams {
   mes: string
@@ -29,15 +37,35 @@ export async function criarLancamento(dados: LancamentoInput): Promise<Lancament
   })
 }
 
-export async function atualizarLancamento(id: string, dados: LancamentoInput): Promise<Lancamento> {
-  return apiFetch<Lancamento>(`/lancamentos/${id}`, {
+export async function criarLancamentoParcelado(dados: LancamentoParceladoInput): Promise<Lancamento[]> {
+  const { lancamentos } = await apiFetch<{ lancamentos: Lancamento[] }>('/lancamentos/parcelado', {
+    method: 'POST',
+    body: JSON.stringify(dados),
+  })
+  return lancamentos
+}
+
+export async function atualizarLancamento(
+  id: string,
+  dados: LancamentoInput,
+  escopo: EscopoParcelas = 'esta',
+): Promise<Lancamento> {
+  return apiFetch<Lancamento>(`/lancamentos/${id}?escopo=${escopo}`, {
     method: 'PUT',
     body: JSON.stringify(dados),
   })
 }
 
-export async function excluirLancamento(id: string): Promise<void> {
-  return apiFetch<void>(`/lancamentos/${id}`, { method: 'DELETE' })
+export async function excluirLancamento(id: string, escopo: EscopoParcelas = 'esta'): Promise<number> {
+  const { excluidos } = await apiFetch<{ excluidos: number }>(`/lancamentos/${id}?escopo=${escopo}`, {
+    method: 'DELETE',
+  })
+  return excluidos
+}
+
+/** Quantos lançamentos cada escopo atinge (incluindo a própria parcela). */
+export async function contarParcelas(id: string): Promise<{ proximas: number; todas: number }> {
+  return apiFetch<{ proximas: number; todas: number }>(`/lancamentos/${id}/parcelas`)
 }
 
 export async function buscarResumoMes(mes: string): Promise<ResumoMes> {

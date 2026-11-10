@@ -1,10 +1,10 @@
 import LancamentoItem from './LancamentoItem'
-import type { Lancamento } from '../types'
+import type { EscopoParcelas, Lancamento } from '../types'
 
 interface LancamentosListProps {
   lancamentos: Lancamento[]
   onEditar: (lancamento: Lancamento) => void
-  onExcluir: (id: string) => void
+  onExcluir: (id: string, escopo: EscopoParcelas) => void
   idEmEdicao: string | null
 }
 
