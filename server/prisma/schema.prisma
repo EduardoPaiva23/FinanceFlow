@@ -12,6 +12,12 @@ enum TipoLancamento {
   despesa
 }
 
+enum OrigemLancamento {
+  manual
+  pdf
+  ofx
+}
+
 model Categoria {
   id           String       @id @default(uuid())
   nome         String       @unique
@@ -44,11 +50,26 @@ model Lancamento {
   categoria    Categoria      @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
   usuarioId    String         @map("usuario_id")
   usuario      Usuario        @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  // Parcelamento: todas as parcelas de uma mesma compra compartilham o parcelamentoId.
+  parcelamentoId String?          @map("parcelamento_id")
+  parcelaNumero  Int?             @map("parcela_numero")
+  parcelaTotal   Int?             @map("parcela_total")
+
+  // Importação: a chave é gravada na criação e nunca muda, para que o lançamento
+  // continue sendo reconhecido mesmo depois de editado pelo usuário.
+  origem          OrigemLancamento @default(manual)
+  fitid           String?
+  chaveImportacao String?          @map("chave_importacao")
+
   criadoEm     DateTime       @default(now())
   atualizadoEm DateTime       @updatedAt
 
   @@index([data])
   @@index([categoriaId])
   @@index([usuarioId])
+  @@index([usuarioId, chaveImportacao])
+  @@index([usuarioId, fitid])
+  @@index([parcelamentoId])
   @@map("lancamentos")
 }
